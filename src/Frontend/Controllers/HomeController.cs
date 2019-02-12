@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Frontend.Models;
 using System.Net.Http;
+using Newtonsoft.Json;
 
 namespace Frontend.Controllers
 {
@@ -23,16 +24,30 @@ namespace Frontend.Controllers
         }
 
         [HttpPost]
-        public IActionResult Upload(string data)
+        public async Task<IActionResult> Upload(string data)
         {
-            string id = null; 
-            //TODO: send data in POST request to backend and read returned id value from response
+            string id = await GetData(data);
+            Console.WriteLine("DATA: " + data);
+            Console.WriteLine("ID: " + id);
             return Ok(id);
         }
 
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        private async Task<string> GetData(string data)
+        {
+            HttpContent content = new StringContent(data);
+            HttpClient client = new HttpClient();
+            HttpResponseMessage response = await client.PostAsync("http://localhost:5000/api/values", content);
+            using (HttpContent responseContent = response.Content)
+            {
+                Task<string> res = responseContent.ReadAsStringAsync();
+                string d = await res;
+                return d;
+            }
         }
     }
 }

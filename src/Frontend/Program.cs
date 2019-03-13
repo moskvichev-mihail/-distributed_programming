@@ -20,7 +20,7 @@ namespace Frontend
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseUrls("http://127.0.0.1:5001")
+                .UseUrls("http://localhost:5001")
                 .Build();
     }
 }

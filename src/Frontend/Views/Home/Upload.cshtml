@@ -3,9 +3,8 @@
 }
 <div>
     <h2>Форма ввода</h2>
-    @using(Html.BeginForm("Upload", "Home", FormMethod.Post))
-    {
+    <form action="http://127.0.0.1:5001/Home/UploadAsync" method="post">
         <input name="data" type="text"/><br>
         <input type="submit">
-    }
+    </form>
 </div>

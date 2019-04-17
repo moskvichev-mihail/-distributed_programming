@@ -5,22 +5,37 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
 using StackExchange.Redis;
+using System.Threading;
 
-namespace BackendApi.Controllers
+namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     public class ValuesController : Controller
     {
-        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
+        public const String REDIS_HOST = "127.0.0.1:6379";
+        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(REDIS_HOST);
         static readonly ConcurrentDictionary<string, string> _data = new ConcurrentDictionary<string, string>();
-        
 
         // GET api/values/<id>
         [HttpGet("{id}")]
         public string Get(string id)
         {
             string value = null;
-            _data.TryGetValue(id, out value);
+            var db = redis.GetDatabase();
+            
+            while(true)
+            {
+                if (db.KeyExists("calculate: " + id))
+                {
+                    value = db.StringGet("calculate: " + id);
+                    break;
+                }
+                else
+                {
+                    Thread.Sleep(500);
+                }
+            }
+
             return value;
         }
 
@@ -28,12 +43,12 @@ namespace BackendApi.Controllers
         [HttpPost]
         public string Post([FromBody]string value)
         {
-            string id = Guid.NewGuid().ToString();
+            var id = Guid.NewGuid().ToString();
             _data[id] = value;
             IDatabase db = redis.GetDatabase();
             db.StringSet(id, value);
-            var subscriber = redis.GetSubscriber();
-            subscriber.Publish("events", id);
+            var subsc = redis.GetSubscriber();
+            subsc.Publish("events", id);
             return id;
         }
     }

@@ -5,18 +5,32 @@ namespace TextListener
 {
     class Program
     {
-        public const String REDIS_HOST = "127.0.0.1:6379";
-        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(REDIS_HOST);
         static void Main(string[] args)
         {
-            var subsc = redis.GetSubscriber();
-            subsc.Subscribe("events", (channel, id) => {
-                var db = redis.GetDatabase();
-                var message = db.StringGet((string)id);
-                Console.WriteLine("id: " + (string)id);
-                Console.WriteLine("message: " + (string)message);
+            Redis redis = new Redis();
+            ISubscriber sub = redis.Sub();
+
+            sub.Subscribe("events", (channel, message) => {
+                string id = message;
+                string valueFromMainDB = redis.GetStrFromDB(0, id);
+                string text = redis.GetStrFromDB(GetDatabaseId(valueFromMainDB), id);
+                ShowProcess(id, valueFromMainDB, text);
             });
-            Console.ReadKey();
+            
+            Console.ReadLine();
+        }
+        
+        private static int GetDatabaseId(string key)
+        {
+            return Convert.ToInt32(key);
+        }
+
+        public static void ShowProcess(string data, string region, string text)
+        {   
+            Console.WriteLine("ID: " + data);
+            Console.WriteLine("Text: " + text);
+            Console.WriteLine("REGION: " + region);
+            Console.WriteLine("----------------------------------------");
         }
     }
 }

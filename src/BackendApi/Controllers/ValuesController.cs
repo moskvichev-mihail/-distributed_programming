@@ -10,33 +10,33 @@ using System.Threading;
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
-    public class ValuesController : Controller
+    [ApiController]
+    public class ValuesController : ControllerBase
     {
-        public const String REDIS_HOST = "127.0.0.1:6379";
-        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(REDIS_HOST);
+        Redis redis = new Redis();
         static readonly ConcurrentDictionary<string, string> _data = new ConcurrentDictionary<string, string>();
-
+        
         // GET api/values/<id>
         [HttpGet("{id}")]
-        public string Get(string id)
+        public string Get([FromRoute] string id)
         {
-            string value = null;
-            var db = redis.GetDatabase();
+            string valueFromMainDB = null;
+            string valueFromRegionDB = null;
+            string text = id;
             
-            while(true)
+            for (int i = 0; i < 5; i++)
             {
-                if (db.KeyExists("calculate: " + id))
-                {
-                    value = db.StringGet("calculate: " + id);
-                    break;
-                }
-                else
-                {
-                    Thread.Sleep(500);
-                }
-            }
+                valueFromMainDB = redis.GetStrFromDB(0, text);
+                valueFromRegionDB = redis.GetStrFromDB( GetDatabaseId(valueFromMainDB), text);
 
-            return value;
+                if (valueFromRegionDB == null)
+				{
+					Thread.Sleep(200);
+				}
+            }
+            
+            string data = valueFromRegionDB + ":" + valueFromMainDB;
+            return data;
         }
 
         // POST api/values
@@ -44,12 +44,35 @@ namespace Backend.Controllers
         public string Post([FromBody]string value)
         {
             var id = Guid.NewGuid().ToString();
-            _data[id] = value;
-            IDatabase db = redis.GetDatabase();
-            db.StringSet(id, value);
-            var subsc = redis.GetSubscriber();
-            subsc.Publish("events", id);
+            
+            string data = ParseData(value, 0);
+            string regionCode = ParseData(value, 1);
+            int regionDatabaseId = Redis.GetDatabaseId(regionCode);
+            string contextId = id;
+           
+            redis.Add(0, contextId, regionDatabaseId.ToString());
+            redis.Add(regionDatabaseId, contextId, data);
+            ShowProcess(contextId, regionCode + "(" + regionDatabaseId + ")");
+
+            redis.Publish(contextId);
             return id;
+        }
+
+        private int GetDatabaseId(string key)
+        {
+            return Convert.ToInt32(key);
+        }
+
+        private static string ParseData( string msg, int pos )
+        {
+            return msg.Split( ':' )[pos];
+        }
+
+        public void ShowProcess(string data, string region)
+        {   
+            Console.WriteLine("ID: " + data);
+            Console.WriteLine("REGION: " + region);
+            Console.WriteLine("----------------------------------------");
         }
     }
 }

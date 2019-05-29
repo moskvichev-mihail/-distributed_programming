@@ -3,8 +3,14 @@
 }
 <div>
     <h2>Форма ввода</h2>
-    <form action="http://127.0.0.1:5001/Home/UploadAsync" method="post">
-        <input name="data" type="text"/><br>
+    <form method="post">
+        Data: <input name="data" type="text"/>
+        <select name="region">
+            <option value="rus">RUS - Россия</option>
+            <option value="eu">EU - Европейский Союз</option>
+            <option value="usa">USA - США</option>
+        </select>
+        <br>
         <input type="submit">
     </form>
 </div>

@@ -1,42 +1,83 @@
 ﻿using System;
+using System.Collections.Generic;
 using StackExchange.Redis;
-using System.Text.RegularExpressions;
 
 namespace VowelConsCounter
 {
     class Program
     {
-        public const String REDIS_HOST = "127.0.0.1:6379";
-        public const String QUEUE_NAME_COUNTER = "vowel-cons-counter-jobs";
-        public const String QUEUE_CHANNEL_COUNTER = "CalculateVowelConsJob";
-        public const String QUEUE_NAME_RATER = "vowel-cons-rater-jobs"; 
-        public const String QUEUE_CHANNEL_RATER = "RateVowelConsJob"; 
-        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(REDIS_HOST);
+        const string COUNTER_QUEUE_NAME  = "vowel-cons-counter-jobs";
+        const string COUNTER_HINTS_CHANNEL  = "counter-hints";
+        const string RATER_QUEUE_NAME  = "vowel-cons-rater-jobs";
+        const string RATER_HINTS_CHANNEL  = "rate-hints";
+       
+        private static HashSet<char> VOWELS = new HashSet<char>{'a', 'e', 'i', 'o', 'u', 'y'};
+		private static HashSet<char> CONSONANTS = new HashSet<char>{'b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'q', 'r', 's', 't', 'v', 'w', 'x', 'z'};
+
         static void Main(string[] args)
         {
-            var subsc = redis.GetSubscriber();
-            subsc.Subscribe(QUEUE_CHANNEL_COUNTER, delegate
+            Redis redis = new Redis();
+            ISubscriber sub = redis.Sub();
+            IDatabase getDB = redis.GetDB(0);
+
+            sub.Subscribe(COUNTER_HINTS_CHANNEL, delegate
             {
-                IDatabase db = redis.GetDatabase();
-                String message = db.ListRightPop(QUEUE_NAME_COUNTER);
-                
-                while(message != null)
+                string msg = getDB.ListRightPop(COUNTER_QUEUE_NAME);
+                while (msg != null)
                 {
-                    String[] resultOfSplit = message.Split(' ');
-                    String text = resultOfSplit[0];
-                    String id = resultOfSplit[1];
-                    int countOfVowel = Regex.Matches(text, @"[aiueoy]", RegexOptions.IgnoreCase).Count;
-                    int countOfConsonant = text.Length - countOfVowel;
+                    string id = ParseData(msg, 0);
+                    string valueFromMainDB = redis.GetStrFromDB(0, id);
+                    string valueFromRegionDB = redis.GetStrFromDB( GetDatabaseId(valueFromMainDB), id);
                     
-                    message = $"{id} {countOfVowel} {countOfConsonant}";
-                    db.ListLeftPush(QUEUE_NAME_RATER, message, flags: CommandFlags.FireAndForget);
-                    db.Multiplexer.GetSubscriber().Publish(QUEUE_CHANNEL_RATER, "");
-                    Console.WriteLine(message);
-                    message = null;
-                    message = db.ListRightPop(QUEUE_NAME_COUNTER);
+                    int vowels = 0;
+                    int consonants = 0;
+
+                    foreach (char ch in valueFromRegionDB)
+                    {
+                        char chToLower = Char.ToLower(ch);
+                        if (VOWELS.Contains(chToLower))
+                        {
+                            ++vowels;
+                        }
+                        else if (CONSONANTS.Contains(chToLower))
+                        {
+                            ++consonants;
+                        }
+                    }
+                    SendMessage($"{id}:{vowels}:{consonants}", getDB, sub);
+                    msg = getDB.ListRightPop( COUNTER_QUEUE_NAME );
+                    ShowProcess(id, valueFromMainDB);
                 }
             });
-            Console.ReadKey();
+            
+            Console.Title = "VowelConsCounter";
+            Console.WriteLine("Press Enter to exit");
+            Console.ReadLine();
+        }
+        
+        private static int GetDatabaseId(string key)
+        {
+            return Convert.ToInt32(key);
+        }
+
+        private static void SendMessage(string message, IDatabase db, ISubscriber sub )
+        {
+            // put message to queue
+            db.ListLeftPush( RATER_QUEUE_NAME, message, flags: CommandFlags.FireAndForget );
+            // and notify consumers
+            sub.Publish( RATER_HINTS_CHANNEL, "" );
+        }
+
+        private static string ParseData( string msg, int pos )
+        {
+            return msg.Split( ':' )[pos];
+        }
+        
+        public static void ShowProcess(string data, string region)
+        {   
+            Console.WriteLine("ID: " + data);
+            Console.WriteLine("REGION: " + region);
+            Console.WriteLine("----------------------------------------");
         }
     }
 }

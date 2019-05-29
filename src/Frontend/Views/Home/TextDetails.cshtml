@@ -1,9 +1,12 @@
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Text details";
 }
 
 <div>
-    <p>Id: @(ViewContext.RouteData.Values["id"])</p>
-
-    <p>Rate: @(ViewData["rate"])</p>
+    <p>
+        Отношение: @(ViewData["TextDetails"])           
+    </p>
+    <p>
+        Регион: @(ViewData["Region"])           
+    </p>
 </div>

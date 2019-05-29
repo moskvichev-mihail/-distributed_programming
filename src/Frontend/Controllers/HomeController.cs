@@ -11,7 +11,8 @@ namespace Frontend.Controllers
 {
     public class HomeController : Controller
     {
-        public const String BACKEND_URL = "http://127.0.0.1:5000/api/values";
+        static readonly string url = "http://localhost:5000/api/values/";
+
         public IActionResult Index()
         {
             return View();
@@ -26,31 +27,52 @@ namespace Frontend.Controllers
         [HttpGet]
         public async Task<IActionResult> TextDetails(string id)
         {
-            string url = BACKEND_URL + $"/{id}";
+            string textDetails = null; 
             HttpClient client = new HttpClient();
-            HttpResponseMessage response = await client.GetAsync(url);
 
-            using(HttpContent responseContent = response.Content)
-            {
-                ViewData["rate"] = await responseContent.ReadAsStringAsync();
-                ViewData["id"] = id;
-                return View(); 
-            }
+            HttpResponseMessage request = await client.GetAsync(url + id);
+            textDetails = await request.Content.ReadAsStringAsync();
+            string ratio = ParseData(textDetails, 0);
+            string region = ParseData(textDetails, 1);
+            ViewData["TextDetails"] = ratio;
+            ViewData["Region"] = region;
+        
+            return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> UploadAsync(string data)
+        public async Task<IActionResult> Upload(string data, string region)
         {
-            HttpClient client = new HttpClient();
-            HttpResponseMessage response = await client.PostAsJsonAsync(BACKEND_URL, data);
-            using(HttpContent responseContent = response.Content)
+            ShowProcess(data, region);
+            string id = null; 
+
+            if (data != null)
             {
-                return Redirect("TextDetails/" + await responseContent.ReadAsStringAsync());
-            }
+                HttpClient client = new HttpClient();
+                string text = $"{data}:{region}";
+                HttpResponseMessage request = await client.PostAsJsonAsync(url, text);
+                id = await request.Content.ReadAsStringAsync();
+            }         
+
+            return Redirect("TextDetails/" + id);
         }
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        private static string ParseData( string msg, int pos )
+        {
+            return msg.Split( ':' )[pos];
+        }
+
+        public void ShowProcess(string data, string region)
+        {   
+            Console.WriteLine("Data: " + data);
+            Console.WriteLine("Region: " + region);
+            Console.WriteLine("----------------------------------------");
         }
     }
 }

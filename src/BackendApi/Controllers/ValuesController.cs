@@ -5,36 +5,74 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
 using StackExchange.Redis;
+using System.Threading;
 
-namespace BackendApi.Controllers
+namespace Backend.Controllers
 {
     [Route("api/[controller]")]
-    public class ValuesController : Controller
+    [ApiController]
+    public class ValuesController : ControllerBase
     {
-        private static ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
+        Redis redis = new Redis();
         static readonly ConcurrentDictionary<string, string> _data = new ConcurrentDictionary<string, string>();
         
-
         // GET api/values/<id>
         [HttpGet("{id}")]
-        public string Get(string id)
+        public string Get([FromRoute] string id)
         {
-            string value = null;
-            _data.TryGetValue(id, out value);
-            return value;
+            string valueFromMainDB = null;
+            string valueFromRegionDB = null;
+            string text = id;
+            
+            for (int i = 0; i < 5; i++)
+            {
+                valueFromMainDB = redis.GetStrFromDB(0, text);
+                valueFromRegionDB = redis.GetStrFromDB( GetDatabaseId(valueFromMainDB), text);
+
+                if (valueFromRegionDB == null)
+				{
+					Thread.Sleep(200);
+				}
+            }
+            
+            string data = valueFromRegionDB + ":" + valueFromMainDB;
+            return data;
         }
 
         // POST api/values
         [HttpPost]
         public string Post([FromBody]string value)
         {
-            string id = Guid.NewGuid().ToString();
-            _data[id] = value;
-            IDatabase db = redis.GetDatabase();
-            db.StringSet(id, value);
-            var subscriber = redis.GetSubscriber();
-            subscriber.Publish("events", id);
+            var id = Guid.NewGuid().ToString();
+            
+            string data = ParseData(value, 0);
+            string regionCode = ParseData(value, 1);
+            int regionDatabaseId = Redis.GetDatabaseId(regionCode);
+            string contextId = id;
+           
+            redis.Add(0, contextId, regionDatabaseId.ToString());
+            redis.Add(regionDatabaseId, contextId, data);
+            ShowProcess(contextId, regionCode + "(" + regionDatabaseId + ")");
+
+            redis.Publish(contextId);
             return id;
+        }
+
+        private int GetDatabaseId(string key)
+        {
+            return Convert.ToInt32(key);
+        }
+
+        private static string ParseData( string msg, int pos )
+        {
+            return msg.Split( ':' )[pos];
+        }
+
+        public void ShowProcess(string data, string region)
+        {   
+            Console.WriteLine("ID: " + data);
+            Console.WriteLine("REGION: " + region);
+            Console.WriteLine("----------------------------------------");
         }
     }
 }

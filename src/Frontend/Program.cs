@@ -12,6 +12,7 @@ namespace Frontend
 {
     public class Program
     {
+        const String urlFrontend = "http://127.0.0.1:5001";
         public static void Main(string[] args)
         {
             BuildWebHost(args).Run();
@@ -20,7 +21,7 @@ namespace Frontend
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseUrls("http://localhost:5001")
+                .UseUrls(urlFrontend)
                 .Build();
     }
 }

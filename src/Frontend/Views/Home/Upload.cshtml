@@ -3,9 +3,14 @@
 }
 <div>
     <h2>Форма ввода</h2>
-    @using(Html.BeginForm("Upload", "Home", FormMethod.Post))
-    {
-        <input name="data" type="text"/><br>
+    <form method="post">
+        Data: <input name="data" type="text"/>
+        <select name="region">
+            <option value="rus">RUS - Россия</option>
+            <option value="eu">EU - Европейский Союз</option>
+            <option value="usa">USA - США</option>
+        </select>
+        <br>
         <input type="submit">
-    }
+    </form>
 </div>

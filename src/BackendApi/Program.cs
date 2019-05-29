@@ -12,6 +12,8 @@ namespace BackendApi
 {
     public class Program
     {
+        const String urlBackendApi = "http://127.0.0.1:5000";
+
         public static void Main(string[] args)
         {
             BuildWebHost(args).Run();
@@ -20,7 +22,7 @@ namespace BackendApi
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseUrls("http://127.0.0.1:5000")
+                .UseUrls(urlBackendApi)
                 .Build();
     }
 }

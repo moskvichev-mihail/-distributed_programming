@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 using StackExchange.Redis;
 using System.Threading;
 
-namespace Backend.Controllers
+namespace BackendApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -22,7 +22,7 @@ namespace Backend.Controllers
         {
             string valueFromMainDB = null;
             string valueFromRegionDB = null;
-            string text = id;
+            string text = "TextRankCalc_" + id;
             
             for (int i = 0; i < 5; i++)
             {
@@ -48,7 +48,7 @@ namespace Backend.Controllers
             string data = ParseData(value, 0);
             string regionCode = ParseData(value, 1);
             int regionDatabaseId = Redis.GetDatabaseId(regionCode);
-            string contextId = id;
+            string contextId = "TextRankCalc_" + id;
            
             redis.Add(0, contextId, regionDatabaseId.ToString());
             redis.Add(regionDatabaseId, contextId, data);

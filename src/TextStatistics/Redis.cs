@@ -1,7 +1,7 @@
 using System;
 using StackExchange.Redis;
 
-namespace BackendApi
+namespace TextStatistics
 {
     class Redis
     {

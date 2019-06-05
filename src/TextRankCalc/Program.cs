@@ -17,9 +17,11 @@ namespace TextRankCalc
             sub.Subscribe("events", (channel, message) =>
             {
                 string id = message;
-                string valueFromMainDB = redis.GetStrFromDB(0, id);
-                SendMessage($"{id}:{valueFromMainDB}", getDB, sub);
-                ShowProcess(id, valueFromMainDB);
+                if (id.Contains("TextRankCalc_")) {
+                    string valueFromMainDB = redis.GetStrFromDB(0, id);
+                    SendMessage($"{id}:{valueFromMainDB}", getDB, sub);
+                    ShowProcess(id, valueFromMainDB);
+                }
             });
             
             Console.ReadLine();

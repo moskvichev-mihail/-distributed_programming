@@ -20,15 +20,18 @@ namespace VowelConsRater
                 while (msg != null)
                 {                   
                     string id = ParseData(msg, 0);
+                    string rankId = id.Substring(13, id.Length - 13);
                     string vowels = ParseData(msg, 1);
                     string consonants = ParseData(msg, 2);    
                     string ratio = vowels + "/" + consonants;
+                    double ratioNumber = Convert.ToDouble(vowels) / Convert.ToDouble(consonants);
                     string valueFromMainDB = redis.GetStrFromDB(0, id);
                     
                     DoJob( "RATIO: ", ratio ); 
                     ShowProcess(id, valueFromMainDB);
                     redis.Add(GetDatabaseId(valueFromMainDB), id, ratio);
                     msg = getDB.ListRightPop(RATER_QUEUE_NAME);
+                    sub.Publish("events", $"{rankId}:{ratioNumber}");
                 }
             });
             

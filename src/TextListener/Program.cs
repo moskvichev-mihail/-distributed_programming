@@ -12,9 +12,11 @@ namespace TextListener
 
             sub.Subscribe("events", (channel, message) => {
                 string id = message;
-                string valueFromMainDB = redis.GetStrFromDB(0, id);
-                string text = redis.GetStrFromDB(GetDatabaseId(valueFromMainDB), id);
-                ShowProcess(id, valueFromMainDB, text);
+                if (id.Contains("TextRankCalc_")) {
+                    string valueFromMainDB = redis.GetStrFromDB(0, id);
+                    string text = redis.GetStrFromDB(GetDatabaseId(valueFromMainDB), id);
+                    ShowProcess(id, valueFromMainDB, text);
+                }
             });
             
             Console.ReadLine();
